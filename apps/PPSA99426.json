@@ -1,0 +1,13 @@
+{
+  "titleid": "PPSA99426",
+  "name": "SilverBirch",
+  "kind": "app",
+  "description": "Independent DS interpreter runtime with a native PS5 frontend, PlayStation controls and integer 4K output. Bring your own supported ROM; no games or original console BIOS included.",
+  "license": "GPL-3.0-or-later",
+  "author": "BaZZtian",
+  "version": "0.2.2",
+  "source_repo": "https://github.com/BaZZtian/SilverBirch",
+  "artifact_url": "https://github.com/BaZZtian/SilverBirch/releases/download/v0.2.2/SilverBirch-v0.2.2-PS5.zip",
+  "sha256": "c1aab0c3126c9be5d4c4562e8fe565982364e052f63f73ac88a89959f05449f4",
+  "icon_url": "https://raw.githubusercontent.com/BaZZtian/SilverBirch/v0.2.2/sce_sys/icon0.png"
+}
