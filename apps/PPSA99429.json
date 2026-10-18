@@ -1,0 +1,14 @@
+{
+  "titleid": "PPSA99429",
+  "name": "APRICOT",
+  "kind": "game",
+  "category": "console-ports",
+  "description": "Dedicated native PS5 port project for two related handheld RPG editions. Requires your own game data. Work in progress; no playable release or download.",
+  "license": null,
+  "author": "BaZZtian",
+  "version": null,
+  "source_repo": null,
+  "artifact_url": null,
+  "sha256": null,
+  "icon_url": null
+}
