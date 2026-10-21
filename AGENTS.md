@@ -69,3 +69,9 @@ pull request, build, release, and Store/catalog submission.**
   established: **do not publish, package, merge, or submit a release**.
 - Do not bypass these rules to meet a deadline. This document is operational
   guidance only: it does not itself license, transfer, or revoke any copyright.
+
+## 4. Project-specific known rights (not a complete legal audit)
+
+- Fork of `darkxex/ps5-homebrew-catalog`, which retains its GPL-3.0 license. The fork operator is neither owner of the upstream catalog nor copyright holder of third-party apps.
+- A catalog submitter owns neither listed software nor its upstream components by submitting a title ID; attribute port maintainers and original rights holders separately.
+- Files `keys/*.pub.pem` are intentional PUBLIC verification keys, not credentials. Never commit private signing keys.
