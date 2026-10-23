@@ -610,6 +610,7 @@ def build_site(out: Path, apps_dir: Path, report: Report, base: str = DEFAULT_BA
     own = {name: theme_obj.directory / name for name in ("app.js", "favicon.svg")}
     js = assets.add("app", "js", (own["app.js"] if own["app.js"].is_file() else shared_dir / "app.js").read_bytes())
     i18n = assets.add("i18n", "js", (shared_dir / "i18n.js").read_bytes())
+    analytics = assets.add("analytics", "js", (shared_dir / "analytics.js").read_bytes())
     placeholder = assets.add("placeholder", "svg", (shared_dir / "placeholder.svg").read_bytes())
     shutil.copyfile(own["favicon.svg"] if own["favicon.svg"].is_file() else shared_dir / "favicon.svg",
                     root / "favicon.svg")
@@ -835,6 +836,7 @@ def build_site(out: Path, apps_dir: Path, report: Report, base: str = DEFAULT_BA
         "css": css,
         "js": js,
         "i18n": i18n,
+        "analytics": analytics,
         "fonts": e(FONT_URL.format(families=theme_obj.fonts)),
         "theme_color": theme_obj.color,
         "commit": e(commit),
@@ -972,9 +974,11 @@ def build_site(out: Path, apps_dir: Path, report: Report, base: str = DEFAULT_BA
               added=added, news=news_items)
 
     # Header and redirect rules, for a host that reads _headers and _redirects; GitHub Pages ignores them.
-    csp = ("default-src 'self'; img-src 'self' data:; style-src 'self' https://fonts.googleapis.com; "
-           "font-src https://fonts.gstatic.com; script-src 'self'; "
-           "connect-src 'self' https://raw.githubusercontent.com https://translate.googleapis.com; "
+    csp = ("default-src 'self'; img-src 'self' data: https://*.google-analytics.com https://*.googletagmanager.com; "
+           "style-src 'self' https://fonts.googleapis.com; "
+           "font-src https://fonts.gstatic.com; script-src 'self' https://www.googletagmanager.com; "
+           "connect-src 'self' https://raw.githubusercontent.com https://translate.googleapis.com "
+           "https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; "
            "base-uri 'self'; form-action 'none'; frame-ancestors 'none'")
     (out / "_headers").write_text(f"""/*
   X-Content-Type-Options: nosniff
