@@ -17,7 +17,7 @@ substituted.
 
 Icons are fetched and re-served from the site, resized to WebP when Pillow is
 installed. With an icon cache directory, an icon is fetched again only when its
-cached copy is older than a day (an icon URL may name a branch, where the file
+cached copy is older than an hour (an icon URL may name a branch, where the file
 can change); entries no longer used are pruned. A failed icon falls back to a placeholder instead of failing the
 build.
 """
@@ -361,7 +361,7 @@ def png_icons(data: bytes) -> dict[int, bytes]:
     return icons
 
 
-ICON_MAX_AGE = 24 * 60 * 60  # seconds a cached original is used before it is fetched again
+ICON_MAX_AGE = 60 * 60  # seconds a cached original is used before it is fetched again
 
 
 def _icon(url: str, cache: Path | None, fetch=None) -> tuple[bytes, str, bytes]:
