@@ -34,6 +34,13 @@ def owns(author: str, record: Record, github: GitHub) -> bool:
     return github.account_type(record.owner) == "Organization" and github.is_public_member(record.owner, author)
 
 
+def in_repository(url: str, record: Record) -> bool:
+    """True when url is a file of the app's repository, on raw.githubusercontent.com or as github.com/<repo>/raw/."""
+    prefixes = (f"https://raw.githubusercontent.com/{record.owner}/{record.repo}/",
+                f"https://github.com/{record.owner}/{record.repo}/raw/")
+    return url.casefold().startswith(tuple(prefix.casefold() for prefix in prefixes))
+
+
 def has_listed_app(author: str, listed: list[Record], github: GitHub) -> bool:
     """True when the author owns, as owner or public organization member, an app that is already listed."""
     owners = {}
@@ -76,9 +83,8 @@ def new_app_reasons(author: str, changes: list[Change], new: Record | None, list
         return [f"GitHub could not be asked: {error}"]
     if not new.data["artifact_url"].startswith(new.data["source_repo"].rstrip("/") + "/releases/download/"):
         reasons.append("the file is not a release file of the app's repository")
-    icons = f"https://raw.githubusercontent.com/{new.owner}/{new.repo}/"
     # An icon inside the release file needs no address: the file itself is checked above.
-    if new.data["icon_url"] and not new.data["icon_url"].casefold().startswith(icons.casefold()):
+    if new.data["icon_url"] and not in_repository(new.data["icon_url"], new):
         reasons.append("the icon is at an address outside the app's repository")
     return reasons
 
@@ -102,8 +108,7 @@ def release_reservation_reasons(author: str, holder: str | None, new: Record, gi
         return [f"GitHub could not be asked: {error}"]
     if not new.data["artifact_url"].startswith(new.data["source_repo"].rstrip("/") + "/releases/download/"):
         reasons.append("the file is not a release file of the app's repository")
-    icons = f"https://raw.githubusercontent.com/{new.owner}/{new.repo}/"
-    if new.data["icon_url"] and not new.data["icon_url"].casefold().startswith(icons.casefold()):
+    if new.data["icon_url"] and not in_repository(new.data["icon_url"], new):
         reasons.append("the icon is at an address outside the app's repository")
     return reasons
 
@@ -186,8 +191,7 @@ def release_bump_reasons(old: Record, new: Record, github: GitHub, author: str |
         reasons.append("it does not point at a new file")
     if not new.data["artifact_url"].startswith(new.data["source_repo"].rstrip("/") + "/releases/download/"):
         reasons.append("the file is not a release file of the app's repository")
-    icons = f"https://raw.githubusercontent.com/{new.owner}/{new.repo}/"
     if (new.data["icon_url"] and new.data["icon_url"] != old.data["icon_url"]
-            and not new.data["icon_url"].casefold().startswith(icons.casefold())):
+            and not in_repository(new.data["icon_url"], new)):
         reasons.append("the icon moves to an address outside the app's repository")
     return reasons

@@ -96,6 +96,14 @@ class BumpReasonsTests(unittest.TestCase):
         reasons = self.reasons(icon_url="https://raw.githubusercontent.com/other/place/main/icon0.png")
         self.assertEqual(reasons, ["the icon moves to an address outside the app's repository"])
 
+    def test_an_icon_through_github_dot_com_raw_of_the_same_repository_is_merged(self):
+        base = "https://github.com/example/example-app/raw/01.000.010/sce_sys/icon0.png"
+        self.assertEqual(self.reasons(icon_url=base), [])
+        self.assertEqual(self.reasons(icon_url=base.replace("example/example-app", "other/place")),
+                         ["the icon moves to an address outside the app's repository"])
+        self.assertEqual(self.reasons(icon_url=base.replace("/raw/", "/blob/")),
+                         ["the icon moves to an address outside the app's repository"])
+
     def test_a_reservation_and_an_unreadable_record_are_left_for_a_maintainer(self):
         held = self.load("held", reservation(titleid="PPSA01234"))
         self.assertEqual(self.reasons(old=held, new=held), ["it changes a reservation"])
