@@ -54,7 +54,10 @@ MAX_LENGTH = {
 # Title IDs that templates ship with; publishing under them guarantees collisions.
 RESERVED_TITLE_IDS = {"PPSA99999": "the ps5-native-app-boilerplate default"}
 
+# Four letters and five digits, the shape ShadowMountPlus registers; it skips NPXS (system titles).
 TITLE_ID = re.compile(r"[A-Z]{4}[0-9]{5}")
+# Prefixes no listing may use: PS4 titles and system titles.
+BLOCKED_TITLE_PREFIXES = {"CUSA": "PS4 titles aren't listed", "NPXS": "ShadowMountPlus ignores system titles"}
 # A record's id is its filename: the title ID, plus -<owner> when another app already uses that title ID.
 RECORD_ID = re.compile(r"[A-Z]{4}[0-9]{5}(?:-[a-z0-9-]{1,39})?")
 RECORD_PATH = re.compile(r"apps/[A-Z]{4}[0-9]{5}(?:-[a-z0-9-]{1,39})?\.json")
@@ -199,6 +202,8 @@ def _check_fields(data: dict) -> list[str]:
 
     if not TITLE_ID.fullmatch(data["titleid"]):
         problems.append("titleid must be four uppercase letters and five digits, e.g. PPSA01234")
+    elif data["titleid"][:4] in BLOCKED_TITLE_PREFIXES:
+        problems.append(f"titleid must not start with {data['titleid'][:4]}: {BLOCKED_TITLE_PREFIXES[data['titleid'][:4]]}")
     elif data["titleid"] in RESERVED_TITLE_IDS:
         problems.append(f"titleid {data['titleid']} is reserved ({RESERVED_TITLE_IDS[data['titleid']]}); "
                         "choose a unique title ID")

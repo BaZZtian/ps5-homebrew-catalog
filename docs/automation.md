@@ -425,7 +425,7 @@ public GitHub for native PS5 apps the catalog doesn't list yet. It only reads
 other repositories: nothing is downloaded and developers aren't contacted.
 
 1. **Find.** Code searches for `sce_sys/param.json` files and build scripts
-   with a `PPSA` title ID (strong signals), README install instructions and
+   with a title ID (strong signals; any four letters and five digits, not `CUSA` or `NPXS`), README install instructions and
    mentions of ShadowMountPlus, `.ffpfsc` or `.ffpkg`; repository searches
    (`ps5 homebrew`, the `ps5` and `ps5-homebrew` topics, `prospero` in the
    name); and the other repositories of developers who are listed or have a
