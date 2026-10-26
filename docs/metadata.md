@@ -31,7 +31,7 @@ whatever install location the user chose in its settings. It can be added to an
 app that is already listed: from then on, new installs and updates are
 downloaded to internal storage, even when the previous version is on another
 drive. Once the new copy is in place, the store uninstalls the older one it
-installed on that other drive (the app's saved data stays). The only accepted value is `true`; leave the field out for the
+installed on that other drive (the app's saved data stays). The only accepted value is `true`; leave the field out, or remove it later, for the
 normal behaviour (the location chosen in the store's settings). The API
 repeats it in `apps/<ID>.json`.
 
