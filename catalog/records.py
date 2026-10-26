@@ -44,7 +44,9 @@ CATEGORIES = {
 # Fields a record may carry besides FIELDS; checked when present.
 # icon_member: where the icon is inside the release's ZIP, for a repository that does not commit it.
 # icon_url is then null (docs/metadata.md, Icon inside the release file).
-OPTIONAL_FIELDS = ("icon_member",)
+# internalOnly: true makes the store always install the app to the console's internal storage,
+# whatever install location the user chose. A boolean; leave it out for the default behaviour.
+OPTIONAL_FIELDS = ("icon_member", "internalOnly")
 MAX_FILE_BYTES = 8192
 MAX_LENGTH = {
     "titleid": 9, "name": 64, "kind": 4, "category": 16, "description": 200, "license": 64,
@@ -178,7 +180,11 @@ def _check_fields(data: dict) -> list[str]:
                 problems.append(f"{field} must be null in a reservation (artifact_url is null)")
     if reservation and "icon_member" in data:
         problems.append("icon_member must be absent in a reservation (artifact_url is null)")
+    if "internalOnly" in data and data["internalOnly"] is not True:
+        problems.append("internalOnly must be true, or left out")
     for field, value in data.items():
+        if field == "internalOnly":
+            continue
         if value is None:
             if field == "icon_url" and isinstance(data.get("icon_member"), str):
                 continue          # the icon is inside the release's ZIP

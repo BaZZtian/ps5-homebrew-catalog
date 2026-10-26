@@ -130,6 +130,13 @@ class RecordTests(unittest.TestCase):
         self.assertRejected(reservation(icon_member="a/icon0.png"), "icon_member must be absent in a reservation")
         self.assertRejected(record(**dict(inside, icon_member=None)), "icon_member must not be null")
 
+    def test_internal_only_is_optional_and_must_be_true(self):
+        self.assertEqual(self.errors(record()), [])
+        self.assertEqual(self.errors(record(internalOnly=True)), [])
+        for bad in (False, "true", 1, None):
+            with self.subTest(value=bad):
+                self.assertRejected(record(internalOnly=bad), "internalOnly must be true, or left out")
+
     def test_only_reservations_may_be_null(self):
         self.assertRejected(record(icon_url=None), "icon_url must not be null")
         self.assertRejected(record(version=None), "version must not be null")
