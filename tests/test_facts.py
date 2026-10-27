@@ -28,13 +28,15 @@ class FakeGitHub:
         self.fail = fail
         self.calls = 0
         self.body = None
+        self.downloads = None
 
     def release_by_tag(self, owner, name, tag):
         self.calls += 1
         if self.fail:
             raise GitHubError("GitHub API rate limit reached")
         return {"published_at": "2026-09-01T10:00:00Z", "prerelease": True, "body": self.body,
-                "assets": [{"name": "PPSA01234.zip", "size": 4096}, {"name": "other.zip", "size": 1}]}
+                "assets": [{"name": "PPSA01234.zip", "size": 4096, "download_count": self.downloads},
+                           {"name": "other.zip", "size": 1, "download_count": 99}]}
 
     def tree(self, owner, name, ref):
         return list(self.files)
@@ -107,6 +109,26 @@ class FactsTests(unittest.TestCase):
         self.assertEqual(lookup(self.record, FakeGitHub(), self.fetch), Facts(
             size=4096, released="2026-09-01T10:00:00Z", prerelease=True, content_version="01.000.020",
             param_path="app/sce_sys/param.json"))
+
+    def test_downloads_are_those_of_the_listed_file(self):
+        github = FakeGitHub()
+        github.downloads = 42
+        self.assertEqual(lookup(self.record, github, self.fetch).downloads, 42)
+        github.downloads = -1       # not a count
+        self.assertIsNone(lookup(self.record, github, self.fetch).downloads)
+
+    def test_an_answer_cached_before_downloads_were_read_is_asked_again(self):
+        github = FakeGitHub()
+        github.downloads = 7
+        entry = self.cache / "facts" / ("a" * 64 + ".json")
+        entry.parent.mkdir(parents=True)
+        entry.write_text(json.dumps({"size": 4096, "released": None, "prerelease": None, "content_version": None,
+                                     "param_path": None, "notes": None, "uploader": None,
+                                     "icon_url": DATA["icon_url"]}), encoding="utf-8")
+        facts, _ = cached(self.record, None, self.cache)       # offline there is nobody to ask: nothing is claimed
+        self.assertEqual(facts, Facts())
+        facts, _ = cached(self.record, github, self.cache, self.fetch)
+        self.assertEqual((facts.downloads, github.calls), (7, 1))
 
     def test_cached_by_sha256_and_pruned_when_delisted(self):
         github = FakeGitHub()

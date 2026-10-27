@@ -50,6 +50,7 @@ class Facts:
     param_path: str | None = None          # where it was read from ("version" when taken from the record)
     notes: str | None = None               # the release's notes as the developer wrote them (GitHub Markdown)
     uploader: str | None = None            # who attached the file: "actions" (a workflow) or "developer"
+    downloads: int | None = None           # times GitHub served the listed file (every download, not only the store's)
 
 
 def content_version_key(value: str | None) -> tuple[int, int, int] | None:
@@ -116,7 +117,9 @@ def lookup(record: Record, github: GitHub, fetch=None) -> Facts:
     body = release.get("body")
     login = (asset.get("uploader") or {}).get("login")
     uploader = None if not login else "actions" if login == "github-actions[bot]" else "developer"
-    return Facts(size=asset.get("size"), released=release.get("published_at"),
+    count = asset.get("download_count")
+    return Facts(size=asset.get("size"), downloads=count if isinstance(count, int) and count >= 0 else None,
+                 released=release.get("published_at"),
                  prerelease=release.get("prerelease"), content_version=content_version, param_path=where,
                  notes=body[:MAX_NOTES] if isinstance(body, str) and body.strip() else None, uploader=uploader)
 
@@ -130,8 +133,9 @@ def cached(record: Record, github: GitHub | None, cache: Path | None, fetch=None
     if entry and entry.is_file():
         try:
             saved = json.loads(entry.read_text(encoding="utf-8"))
-            # An entry without "notes" or "uploader" was written before they were read.
-            if saved.pop("icon_url", None) == record.icon_source and "notes" in saved and "uploader" in saved:
+            # An entry without "notes", "uploader" or "downloads" was written before they were read.
+            if (saved.pop("icon_url", None) == record.icon_source
+                    and all(key in saved for key in ("notes", "uploader", "downloads"))):
                 older = Facts(**saved)
                 if github is None or time.time() - entry.stat().st_mtime < FRESH_SECONDS:
                     return older, None

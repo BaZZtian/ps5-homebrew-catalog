@@ -669,6 +669,16 @@
     if (search) search.addEventListener("keydown", function (event) {
       if (event.key === "Enter" && search.value.trim()) window.location.href = base + "?q=" + encodeURIComponent(search.value.trim());
     });
+    var dev = $("[data-dev]");
+    if (dev) commentsFile("index.json", function (data) {
+      $$("[data-dev-app]", dev).forEach(function (row) {
+        var entry = data.apps && data.apps[row.getAttribute("data-dev-app")];
+        ["likes", "comments"].forEach(function (what) {
+          var cell = $('[data-dev-count="' + what + '"]', row);
+          if (cell) cell.textContent = String(entry && entry[what] > 0 ? Math.floor(entry[what]) : 0);
+        });
+      });
+    });
     var comments = $("[data-comments-for]");
     if (comments) commentsFile("apps/" + comments.getAttribute("data-comments-for") + ".json", function (data) {
       showReactions(data);

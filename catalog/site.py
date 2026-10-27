@@ -70,6 +70,15 @@ DEFAULT_THEME = "farlight"
 FORMAT_LABELS = {"zip": "ZIP folder", "ffpkg": "FFPKG image", "ffpfsc": "FFPFSC image"}
 KIND_LABELS = {"app": "App", "game": "Game", "tool": "Tool"}
 KIND_PLURALS = {"app": "Apps", "game": "Games", "tool": "Tools"}
+# Where the optional "Sign in with GitHub" of the submit page lives (worker/github-login/README.md).
+# Empty: the submit page has no sign-in and the limit of GitHub's API without one (60 an hour) applies.
+GITHUB_LOGIN_URL = "https://prosperostore-login.darkxex.workers.dev"
+# The categories the submit page offers for each kind (what the listed apps do; the check doesn't enforce it).
+KIND_CATEGORIES = {
+    "app": ("emulators", "streaming", "video", "music", "ai", "utilities"),
+    "game": ("console-ports", "pc-ports", "homebrew-games"),
+    "tool": ("utilities", "tools", "showcases"),
+}
 
 
 def e(value) -> str:
@@ -760,6 +769,9 @@ def build_site(out: Path, apps_dir: Path, report: Report, base: str = DEFAULT_BA
                 'save data.</p>')
         return chip, note
 
+    def dev_url(record: Record) -> str:
+        return f"{base}dev/{record.owner.casefold()}/"
+
     def app_values(record: Record, number: int) -> dict:
         d = record.data
         shared_chip, shared_note = shared_id(record)
@@ -778,8 +790,17 @@ def build_site(out: Path, apps_dir: Path, report: Report, base: str = DEFAULT_BA
             ambient=e(ambients.get(record.id, "")),
             accent=e(accents.get(record.id, "")),
             size_label=e(size_label(known[record.id][0].size)),
+            author_html=e(d["author"]),
+            downloads_chip="",
+            downloads_row="",
         )
         if not record.reserved:
+            values["author_html"] = f'<a href="{e(dev_url(record))}">{e(d["author"])}</a>'
+            count = known[record.id][0].downloads
+            if count is not None:
+                values["downloads_chip"] = (f'<li data-i18n="n.downloads" data-v-n="{count}">'
+                                            f'{count} download{"" if count == 1 else "s"}</li>')
+                values["downloads_row"] = (f'<div><dt data-i18n="d.downloads">Downloads</dt><dd>{count}</dd></div>')
             fmt = artifact_format(record)
             values.update(
                 source_short=e(f"{record.owner}/{record.repo}"),
@@ -832,7 +853,9 @@ def build_site(out: Path, apps_dir: Path, report: Report, base: str = DEFAULT_BA
         "base": base,
         "repo": REPO_URL,
         "comments_url": COMMENTS_URL,
-        "submit_url": f"{REPO_URL}/blob/main/docs/submitting.md",
+        # The submit page when the theme has one; otherwise the guide.
+        "submit_url": f"{base}submit/" if theme_obj.template("submit.html") else f"{REPO_URL}/blob/main/docs/submitting.md",
+        "guide_url": f"{REPO_URL}/blob/main/docs/submitting.md",
         "css": css,
         "js": js,
         "i18n": i18n,
@@ -888,6 +911,52 @@ def build_site(out: Path, apps_dir: Path, report: Report, base: str = DEFAULT_BA
                    canonical=site_url + page_url(record),
                    body=theme_obj.render("app-soon.html" if record.reserved else "app.html", values),
                    og_image=site_url + icons[record.id], page_class="page-app")
+
+    # Submit page: a form that reads the developer's repository in the browser (site/shared/submit.js).
+    submit_template = theme_obj.template("submit.html")
+    if submit_template:
+        category_options = "".join(f'<option value="{key}" data-i18n="cat.{key}">{e(label)}</option>'
+                                   for key, label in CATEGORIES.items())
+        kind_options = "".join(f'<option value="{kind}" data-i18n="kind.{kind}">{e(KIND_LABELS[kind])}</option>'
+                               for kind in KINDS)
+        submit_js = assets.add("submit", "js", (shared_dir / "submit.js").read_bytes())
+        write_page(root / "submit" / "index.html", title="Submit an app — PS5 Homebrew Store",
+                   description="Prepare the listing of your native PS5 app from its GitHub repository and open the pull request.",
+                   canonical=site_url + base + "submit/", page_class="page-submit",
+                   body=submit_template.substitute(shared, submit_js=submit_js, category_options=category_options,
+                                                   kind_options=kind_options, catalog_url=f"{base}catalog/v1.json",
+                                                   kind_categories=e(json.dumps(KIND_CATEGORIES, separators=(",", ":"))),
+                                                   login_url=e(GITHUB_LOGIN_URL)))
+
+    # One public page per developer: their listed apps, how they are doing, and the way to edit a listing.
+    dev_template, dev_app_template = theme_obj.template("dev.html"), theme_obj.template("dev-app.html")
+    if dev_template and dev_app_template:
+        owners: dict[str, list[Record]] = {}
+        for record in releases:
+            owners.setdefault(record.owner.casefold(), []).append(record)
+        for key, group in owners.items():
+            owner = group[0].owner
+            rows = []
+            for record in group:
+                values = numbered[record.id]
+                count = known[record.id][0].downloads
+                rows.append(dev_app_template.substitute(
+                    values, edit_url=e(f"{REPO_URL}/edit/main/apps/{record.id}.json"),
+                    downloads_html="—" if count is None else str(count)))
+            known_counts = [known[r.id][0].downloads for r in group if known[r.id][0].downloads is not None]
+            total_downloads = sum(known_counts)
+            names = sorted({r.data["author"] for r in group}, key=str.casefold)
+            credit = "" if [n.casefold() for n in names] == [owner.casefold()] else \
+                f'<p class="page__line" translate="no">{e(", ".join(names))}</p>'
+            write_page(root / "dev" / key / "index.html", title=f"{owner} — PS5 Homebrew Store",
+                       description=f"{len(group)} native PS5 app(s) by {owner} in the PS5 Homebrew Store.",
+                       canonical=f"{site_url}{base}dev/{key}/", page_class="page-dev",
+                       body=dev_template.substitute(
+                           shared, owner=e(owner), owner_url=e(f"https://github.com/{owner}"), credit_line=credit,
+                           apps="\n".join(rows), app_total=str(len(group)),
+                           apps_label=f"{len(group)} app{'' if len(group) == 1 else 's'}",
+                           downloads_chip=(f'<li data-i18n="n.downloads" data-v-n="{total_downloads}">{total_downloads} '
+                                           f'download{"" if total_downloads == 1 else "s"}</li>' if known_counts else "")))
 
     # TV mode: a 10-foot interface for the PS5 browser, drawn by tv.js from data embedded in the page.
     tv_template = theme_obj.template("tv.html")
@@ -977,7 +1046,7 @@ def build_site(out: Path, apps_dir: Path, report: Report, base: str = DEFAULT_BA
     csp = ("default-src 'self'; img-src 'self' data: https://*.google-analytics.com https://*.googletagmanager.com; "
            "style-src 'self' https://fonts.googleapis.com; "
            "font-src https://fonts.gstatic.com; script-src 'self' https://www.googletagmanager.com; "
-           "connect-src 'self' https://raw.githubusercontent.com https://translate.googleapis.com "
+           "connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://translate.googleapis.com "
            "https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; "
            "base-uri 'self'; form-action 'none'; frame-ancestors 'none'")
     (out / "_headers").write_text(f"""/*

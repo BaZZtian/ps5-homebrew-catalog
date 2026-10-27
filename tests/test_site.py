@@ -198,7 +198,7 @@ class SiteBuildTests(unittest.TestCase):
         self.assertLess(detail.index('data-react="likes"'), detail.index('class="article"'))
         self.assertIn('data-react="comments"', detail)
         self.assertIn('href="https://github.com/darkxex/ps5-homebrew-catalog/discussions?discussions_q=PPSA01234"', detail)
-        self.assertIn("connect-src 'self' https://raw.githubusercontent.com https://translate.googleapis.com ", (self.out / "_headers").read_text(encoding="utf-8"))
+        self.assertIn("connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://translate.googleapis.com ", (self.out / "_headers").read_text(encoding="utf-8"))
         self.assertIn("/api/*/manifest.sig\n  Content-Type: application/octet-stream",
                       (self.out / "_headers").read_text(encoding="utf-8"))
         # The manifest names every JSON file of the API by its hash; the build itself never signs.
@@ -287,6 +287,59 @@ class SiteBuildTests(unittest.TestCase):
         self.assertIsNone(index["apps"][2]["icon_hash"])               # the reservation has no icon
         versions = json.loads((api / "versions.json").read_text(encoding="utf-8"))
         self.assertEqual(versions["apps"]["PPSA01234"], {"content_version": "01.000.000", "version": "01.000.000"})
+
+    def test_developer_pages_downloads_and_the_submit_page(self):
+        from catalog import facts as facts_module
+        known = facts_module.Facts(downloads=1234)
+        with mock.patch.object(facts_module, "cached", lambda record, github, cache, fetch=None:
+                               (facts_module.Facts(), None) if record.reserved else (known, None)):
+            self.build()
+        # One page for the owner of the two listed apps (case does not matter); a reservation has no owner.
+        dev = (self.out / "dev" / "example" / "index.html").read_text(encoding="utf-8")
+        self.assertEqual(sorted(p.name for p in (self.out / "dev").iterdir()), ["example"])
+        for app in ("PPSA01234", "PPSA04321"):
+            self.assertIn(f'data-dev-app="{app}"', dev)
+            self.assertIn(f"https://github.com/darkxex/ps5-homebrew-catalog/edit/main/apps/{app}.json", dev)
+        self.assertNotIn("PPSA05555", dev)
+        self.assertIn('data-i18n="n.downloads" data-v-n="2468">2468 downloads</li>', dev)
+        self.assertNotIn("<script>alert", dev)
+        # The app's page shows its downloads and leads to the developer.
+        page = (self.out / "app" / "PPSA01234" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('data-i18n="n.downloads" data-v-n="1234">1234 downloads</li>', page)
+        self.assertIn('<dt data-i18n="d.downloads">Downloads</dt><dd>1234</dd>', page)
+        self.assertIn('<a href="/dev/example/">Example Dev</a>', page)
+        # The top bar's "Submit app" opens the submit page, which reads the repository in the browser.
+        submit = (self.out / "submit" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('href="/submit/" data-i18n="link.submit"', submit)
+        self.assertIn('data-catalog="/catalog/v1.json"', submit)
+        self.assertRegex(submit, r'<script src="/assets/submit\.[0-9a-f]+\.js"></script>')
+        self.assertIn('<option value="emulators" data-i18n="cat.emulators">Emulators</option>', submit)
+
+    def test_the_submit_page_offers_each_kind_its_own_categories(self):
+        from catalog.records import CATEGORIES, KINDS
+        self.assertEqual(sorted(site.KIND_CATEGORIES), sorted(KINDS))
+        offered = [key for keys in site.KIND_CATEGORIES.values() for key in keys]
+        self.assertEqual(sorted(set(offered)), sorted(CATEGORIES))          # no category is left out
+        self.build()
+        submit = (self.out / "submit" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('data-kind-categories="{&quot;app&quot;:[&quot;emulators&quot;', submit)
+
+    def test_the_sign_in_button_needs_the_workers_address(self):
+        with mock.patch.object(site, "GITHUB_LOGIN_URL", ""):
+            self.build()
+        submit = (self.out / "submit" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('data-login=""', submit)          # no Worker: the script leaves the button hidden
+        with mock.patch.object(site, "GITHUB_LOGIN_URL", "https://login.example.workers.dev"):
+            self.build()
+        submit = (self.out / "submit" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('data-login="https://login.example.workers.dev"', submit)
+
+    def test_without_download_counts_nothing_is_claimed(self):
+        self.build()
+        page = (self.out / "app" / "PPSA01234" / "index.html").read_text(encoding="utf-8")
+        self.assertNotIn("n.downloads", page)
+        self.assertNotIn("d.downloads", page)
+        self.assertNotIn("n.downloads", (self.out / "dev" / "example" / "index.html").read_text(encoding="utf-8").split("<ul class=\"dev-apps\">")[0])
 
     def test_tv_mode(self):
         self.build()
@@ -542,7 +595,7 @@ class TranslationTests(unittest.TestCase):
         import re
         known = self.words()["en"]
         used = set()
-        for path in list((site.SITE / "themes" / "farlight").glob("*.html")) + [site.SITE / "shared" / "tv.js", site.SITE / "themes" / "farlight" / "app.js"]:
+        for path in list((site.SITE / "themes" / "farlight").glob("*.html")) + [site.SITE / "shared" / "tv.js", site.SITE / "shared" / "submit.js", site.SITE / "themes" / "farlight" / "app.js"]:
             text = path.read_text(encoding="utf-8")
             used |= set(re.findall(r'data-i18n(?:-html)?="([\w.\-]+)"', text))
             used |= set(re.findall(r'I18N\.(?:t|html|text)\("([\w.\-]+)"', text))
