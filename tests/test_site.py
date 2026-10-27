@@ -179,6 +179,12 @@ class SiteBuildTests(unittest.TestCase):
         # When the catalog listed each app (null here: the test records have no git history).
         self.assertIn("added", index["apps"][0])
         self.assertIn("added", app)
+        # Who an app is grouped under (a reservation has no repository) and its download count: in the index only,
+        # because the count moves every day and an app's own file keeps its ETag between builds.
+        self.assertEqual([a["owner"] for a in index["apps"]], ["example", "example", None])
+        self.assertEqual([a["downloads"] for a in index["apps"]], [None, None, None])     # an offline build knows no counts
+        self.assertNotIn("downloads", app)
+        self.assertNotIn("owner", app)
         # The news is published beside the catalog and stays out of the manifest (asserted below).
         self.assertEqual(json.loads((api / "news.json").read_text(encoding="utf-8"))["schema"], 3)
         self.assertIn("/api/*/news.sig\n  Content-Type: application/octet-stream",
@@ -303,6 +309,9 @@ class SiteBuildTests(unittest.TestCase):
         self.assertNotIn("PPSA05555", dev)
         self.assertIn('data-i18n="n.downloads" data-v-n="2468">2468 downloads</li>', dev)
         self.assertNotIn("<script>alert", dev)
+        # The catalog page's tiles carry the count, for the "Most downloaded" shelf and order.
+        home = (self.out / "index.html").read_text(encoding="utf-8")
+        self.assertEqual(home.count('data-downloads="1234"'), 2)       # the tile of each of the two apps
         # The app's page shows its downloads and leads to the developer.
         page = (self.out / "app" / "PPSA01234" / "index.html").read_text(encoding="utf-8")
         self.assertIn('data-i18n="n.downloads" data-v-n="1234">1234 downloads</li>', page)
@@ -323,6 +332,16 @@ class SiteBuildTests(unittest.TestCase):
         self.build()
         submit = (self.out / "submit" / "index.html").read_text(encoding="utf-8")
         self.assertIn('data-kind-categories="{&quot;app&quot;:[&quot;emulators&quot;', submit)
+
+    def test_the_index_carries_the_download_counts(self):
+        from catalog import facts as facts_module
+        counts = {"PPSA01234": 1234, "PPSA04321": 0}
+        with mock.patch.object(facts_module, "cached", lambda record, github, cache, fetch=None:
+                               (facts_module.Facts(downloads=counts.get(record.id)), None)):
+            self.build()
+        index = json.loads((self.out / "api" / "v1" / "index.json").read_text(encoding="utf-8"))
+        self.assertEqual({a["id"]: a["downloads"] for a in index["apps"]},
+                         {"PPSA01234": 1234, "PPSA04321": 0, "PPSA05555": None})
 
     def test_the_sign_in_button_needs_the_workers_address(self):
         with mock.patch.object(site, "GITHUB_LOGIN_URL", ""):

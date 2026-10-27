@@ -511,7 +511,7 @@ def write_api(root: Path, url: str, records: list[Record], report: Report, *, up
 
     Per-app files and the version map hold nothing that changes between builds
     of the same catalog, so an unchanged app keeps its ETag and costs clients a
-    304. Only the index carries the build's commit and time.
+    304. Only the index carries the build's commit and time, and the download counts.
     """
     from . import facts as release_facts
     from . import notes as release_notes
@@ -573,7 +573,13 @@ def write_api(root: Path, url: str, records: list[Record], report: Report, *, up
         entry = ({key: app[key] for key in (
             "id", "titleid", "status", "conflicts_with", "name", "kind", "category", "author", "version", "content_version", "format", "size",
             "released", "updated", "added", "icon_small", "icon_hash")}
-            | {"sandbox": ((safety or {}).get(rid) or {}).get("sandbox")})
+            | {"sandbox": ((safety or {}).get(rid) or {}).get("sandbox"),
+               # Who the apps are grouped under (the website's developer pages): the owner of the repository, as
+               # GitHub spells it; null for a reservation, which has no repository yet.
+               "owner": None if record.reserved else record.owner,
+               # How many times GitHub served the listed file. It moves every day, so it is in the index, which
+               # changes with every build anyway, and not in the app's own file, which keeps its ETag.
+               "downloads": facts.downloads})
         # A store released before shared title IDs refuses an index with a title ID twice and a
         # versions file with a key that isn't a title ID, so the apps that share one go in "shared".
         (index if record.id == record.titleid else shared_index).append(entry)
@@ -844,6 +850,8 @@ def build_site(out: Path, apps_dir: Path, report: Report, base: str = DEFAULT_BA
                 # tells new apps from updated ones with them, not with the record's last change.
                 f' data-added="{e(_utc(added.get(record.path.name)) or "")}"'
                 f' data-released="{e(known[record.id][0].released or "")}"'
+                # How many times GitHub has served the release file; the attribute is absent when it is unknown.
+                + ('' if known[record.id][0].downloads is None else f' data-downloads="{known[record.id][0].downloads}"')
             )
             name = template.replace(".html", "-soon.html") if record.reserved else template
             rendered.append(theme_obj.render(name, values))

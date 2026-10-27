@@ -97,7 +97,9 @@ dist/
   fetch from: an app's page has Like and Comment buttons with their counts and
   the latest comments, every tile shows the app's likes and comments (zero
   included), Discover gets a ranked "Most liked" shelf once an app
-  has a like, and the sections can be ordered by "Most liked". TV mode shows
+  has a like, and the sections can be ordered by "Most liked". The same goes for "Most downloaded": a shelf
+  of the ten apps GitHub has served most (each with its place and its count) and an order, offered once the build knows the
+  counts. TV mode shows
   the counts on every tile and in an app's details with its latest comments,
   can order by "Most liked", and shows two QR codes there: one for the app's
   page, to download it, and one for its discussion, to like or comment. They

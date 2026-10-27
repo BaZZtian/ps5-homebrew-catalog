@@ -190,7 +190,9 @@ badge in lists.
       "released": "2026-10-01T01:50:46Z",
       "updated": "2026-10-01T04:17:55Z",
       "icon_small": "https://prosperostore.net/api/v1/icons/PPSA99002-256.png",
-      "icon_hash": "9f2c4d7e1a6b3c58"
+      "icon_hash": "9f2c4d7e1a6b3c58",
+      "owner": "BlackBearReloaded",
+      "downloads": 1234
     }
   ]
 }
@@ -202,6 +204,19 @@ fetch `apps/<TITLEID>.json` for the description, license, download and hash.
 `icon_hash` is there so a list can keep its icons; see [Caching icons](#caching-icons).
 `generated` and `commit` say which build of the catalog this is; `count` is the
 length of `apps`.
+
+`owner` is the GitHub account that owns the app's repository, spelled as GitHub
+spells it (the website's developer page for it is `/dev/<owner, lowercase>/`), and
+`null` for a reservation. Group a developer's apps by it, not by `author`, which is
+how the developer credits themselves and can be written two ways. Compare owners
+ignoring case.
+
+`downloads` is how many times GitHub has served the listed release file, as of
+the build (the counts are read at most once a day), or `null` when it isn't known.
+It counts every download of that file, so reinstalls and downloads outside the
+store are in it: show it as "downloads", not as installs. A new version starts at
+zero, because the count belongs to the file. It is only in the index: it changes
+every day, and an app's own file must not.
 
 `added` is when the catalog first listed the app (the first commit of its
 record), `null` when the build can't read the history. A list can use it for
@@ -468,6 +483,7 @@ site's header rules.
 | 3 | 2026-10-16 | Added `category` to app files (it is a record field) and index entries: the app's shelf, one of the keys in [Metadata format](metadata.md#categories). `schema` stays 3. |
 | 3 | 2026-10-05 | Added `release_notes` and `release_notes_truncated` to app files. `schema` stays 3: a released store accepts only that exact number, so it is raised with the next change that store has been prepared for. Test for the field, not for the number. |
 | 3 | 2026-10-18 | Added `id` and `conflicts_with` to app files and index entries: two different apps may share a title ID, and `id` tells them apart. `id` equals `titleid` for every app that has its title ID to itself, and `schema` stays 3. |
+| 3 | 2026-10-27 | Added `owner` and `downloads` to index entries: who an app is grouped under, and how many times its release file was downloaded. `schema` stays 3. |
 
 ## Where the values come from
 
