@@ -305,9 +305,8 @@
       }
       // The apps GitHub has served most: a rough sign of popularity, with each place and its count.
       var downloaded = available.filter(function (app) { return app.downloads > 0; }).sort(byDownloads).slice(0, MOST_LIKED);
+      // Its tiles keep their likes and comments (paintStats dresses them); the place and the count are added.
       if (downloaded.length) addShelf({ title: I18N.t("shelf.downloaded"), apps: downloaded, dress: function (tile, app, position) {
-        tile.setAttribute("data-ranked", "");
-        dressTile(tile, null);
         var rank = document.createElement("span");
         rank.className = "tile__rank";
         rank.textContent = position + 1;
