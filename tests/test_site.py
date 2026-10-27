@@ -105,6 +105,22 @@ class SiteBuildTests(unittest.TestCase):
         self.assertNotIn("PPSA01234-other", versions["apps"])
         self.assertIn("PPSA01234-other", versions["shared"])
 
+    def test_a_custom_prefix_stays_out_of_apps(self):
+        write_record(self.apps, record(titleid="FAKE77031", name="Custom Prefix", sha256="d" * 64,
+                                       source_repo="https://github.com/other/custom",
+                                       artifact_url="https://github.com/other/custom/releases/download/01.000.000/FAKE77031.zip"),
+                     "FAKE77031.json")
+        count, report = self.build()
+        self.assertFalse(report.failed)
+        api = self.out / "api" / "v1"
+        # A store released before custom prefixes refuses a title ID that isn't PPSA and then loads no catalog.
+        index = json.loads((api / "index.json").read_text(encoding="utf-8"))
+        self.assertNotIn("FAKE77031", [a["id"] for a in index["apps"]])
+        self.assertEqual([a["id"] for a in index["shared"]], ["FAKE77031"])
+        versions = json.loads((api / "versions.json").read_text(encoding="utf-8"))
+        self.assertNotIn("FAKE77031", versions["apps"])
+        self.assertIn("FAKE77031", versions["shared"])
+
     def test_withdrawn_apps_redirect_to_the_front_page(self):
         from catalog import site
         log = "apps/PPSA09999.json\n\napps/PPSA01234.json\napps/notes.txt\n"

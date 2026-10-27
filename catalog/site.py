@@ -581,10 +581,13 @@ def write_api(root: Path, url: str, records: list[Record], report: Report, *, up
                # changes with every build anyway, and not in the app's own file, which keeps its ETag.
                "downloads": facts.downloads})
         # A store released before shared title IDs refuses an index with a title ID twice and a
-        # versions file with a key that isn't a title ID, so the apps that share one go in "shared".
-        (index if record.id == record.titleid else shared_index).append(entry)
+        # versions file with a key that isn't a title ID, and one released before custom prefixes
+        # refuses a title ID that doesn't start with PPSA (it then loads no catalog at all). The apps
+        # that share a title ID, or use another prefix, go in "shared", which those stores skip.
+        in_apps = record.id == record.titleid and record.titleid.startswith("PPSA")
+        (index if in_apps else shared_index).append(entry)
         if not record.reserved:
-            (versions if record.id == record.titleid else shared_versions)[rid] = {
+            (versions if in_apps else shared_versions)[rid] = {
                 "content_version": facts.content_version, "version": d["version"]}
     _write_json(root / "index.json", {
         "schema": API_SCHEMA, "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
