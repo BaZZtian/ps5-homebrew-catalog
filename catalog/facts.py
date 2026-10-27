@@ -109,6 +109,28 @@ def find_content_version(record: Record, github: GitHub, fetch=None) -> tuple[st
     return None, None
 
 
+def total_downloads(record: Record, github: GitHub, current: int) -> int:
+    """Downloads of the listed file across every release of the repository, not only the listed one.
+
+    A new release attaches a new file whose counter starts at zero, so the total adds up the same-named
+    file of every release. `current` (the listed release's own count) is the floor: when the release list
+    can't be read or doesn't contain the listed release, nothing is lost."""
+    try:
+        releases = github.all_releases(record.owner, record.repo)
+    except GitHubError:
+        return current
+    total = 0
+    seen_listed = False
+    for release in releases:
+        for asset in release.get("assets", []):
+            count = asset.get("download_count")
+            if asset.get("name") != record.asset_name or not isinstance(count, int) or count < 0:
+                continue
+            total += count
+            seen_listed = seen_listed or release.get("tag_name") == record.tag
+    return max(total, current) if seen_listed else current
+
+
 def lookup(record: Record, github: GitHub, fetch=None) -> Facts:
     """Ask GitHub about the record's release; raises GitHubError when it can't answer."""
     release = github.release_by_tag(record.owner, record.repo, record.tag) or {}
@@ -118,7 +140,10 @@ def lookup(record: Record, github: GitHub, fetch=None) -> Facts:
     login = (asset.get("uploader") or {}).get("login")
     uploader = None if not login else "actions" if login == "github-actions[bot]" else "developer"
     count = asset.get("download_count")
-    return Facts(size=asset.get("size"), downloads=count if isinstance(count, int) and count >= 0 else None,
+    count = count if isinstance(count, int) and count >= 0 else None
+    if count is not None:
+        count = total_downloads(record, github, count)
+    return Facts(size=asset.get("size"), downloads=count,
                  released=release.get("published_at"),
                  prerelease=release.get("prerelease"), content_version=content_version, param_path=where,
                  notes=body[:MAX_NOTES] if isinstance(body, str) and body.strip() else None, uploader=uploader)

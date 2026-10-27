@@ -29,6 +29,16 @@ class FakeGitHub:
         self.calls = 0
         self.body = None
         self.downloads = None
+        self.earlier = []           # download counts of the same file in older releases (tags v0.5.0, v0.4.0, ...)
+        self.releases_fail = False
+
+    def all_releases(self, owner, name, max_pages=10):
+        if self.releases_fail:
+            raise GitHubError("GitHub API rate limit reached")
+        older = [{"tag_name": f"v0.{5 - i}.0", "assets": [{"name": "PPSA01234.zip", "download_count": n}]}
+                 for i, n in enumerate(self.earlier)]
+        return [{"tag_name": "v0.6.0", "assets": [{"name": "PPSA01234.zip", "download_count": self.downloads},
+                                                  {"name": "other.zip", "download_count": 99}]}] + older
 
     def release_by_tag(self, owner, name, tag):
         self.calls += 1
@@ -116,6 +126,19 @@ class FactsTests(unittest.TestCase):
         self.assertEqual(lookup(self.record, github, self.fetch).downloads, 42)
         github.downloads = -1       # not a count
         self.assertIsNone(lookup(self.record, github, self.fetch).downloads)
+
+    def test_downloads_add_up_the_same_file_of_every_release(self):
+        github = FakeGitHub()
+        github.downloads = 5        # the new release has just started counting
+        github.earlier = [100, 30]
+        self.assertEqual(lookup(self.record, github, self.fetch).downloads, 135)     # other.zip is not counted
+
+    def test_downloads_fall_back_to_the_listed_release_when_the_list_is_unavailable(self):
+        github = FakeGitHub()
+        github.downloads = 5
+        github.earlier = [100]
+        github.releases_fail = True
+        self.assertEqual(lookup(self.record, github, self.fetch).downloads, 5)
 
     def test_an_answer_cached_before_downloads_were_read_is_asked_again(self):
         github = FakeGitHub()
