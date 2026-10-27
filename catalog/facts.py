@@ -51,6 +51,7 @@ class Facts:
     notes: str | None = None               # the release's notes as the developer wrote them (GitHub Markdown)
     uploader: str | None = None            # who attached the file: "actions" (a workflow) or "developer"
     downloads: int | None = None           # times GitHub served the listed file (every download, not only the store's)
+    downloads_total: bool = False          # downloads adds up every release of the file (older answers counted one)
 
 
 def content_version_key(value: str | None) -> tuple[int, int, int] | None:
@@ -143,7 +144,7 @@ def lookup(record: Record, github: GitHub, fetch=None) -> Facts:
     count = count if isinstance(count, int) and count >= 0 else None
     if count is not None:
         count = total_downloads(record, github, count)
-    return Facts(size=asset.get("size"), downloads=count,
+    return Facts(size=asset.get("size"), downloads=count, downloads_total=True,
                  released=release.get("published_at"),
                  prerelease=release.get("prerelease"), content_version=content_version, param_path=where,
                  notes=body[:MAX_NOTES] if isinstance(body, str) and body.strip() else None, uploader=uploader)
@@ -158,9 +159,10 @@ def cached(record: Record, github: GitHub | None, cache: Path | None, fetch=None
     if entry and entry.is_file():
         try:
             saved = json.loads(entry.read_text(encoding="utf-8"))
-            # An entry without "notes", "uploader" or "downloads" was written before they were read.
+            # An entry without "notes", "uploader", "downloads" or "downloads_total" was written before
+            # they were read (or before downloads were added up across releases).
             if (saved.pop("icon_url", None) == record.icon_source
-                    and all(key in saved for key in ("notes", "uploader", "downloads"))):
+                    and all(key in saved for key in ("notes", "uploader", "downloads", "downloads_total"))):
                 older = Facts(**saved)
                 if github is None or time.time() - entry.stat().st_mtime < FRESH_SECONDS:
                     return older, None

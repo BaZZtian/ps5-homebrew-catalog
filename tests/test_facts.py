@@ -118,7 +118,7 @@ class FactsTests(unittest.TestCase):
     def test_lookup(self):
         self.assertEqual(lookup(self.record, FakeGitHub(), self.fetch), Facts(
             size=4096, released="2026-09-01T10:00:00Z", prerelease=True, content_version="01.000.020",
-            param_path="app/sce_sys/param.json"))
+            param_path="app/sce_sys/param.json", downloads_total=True))
 
     def test_downloads_are_those_of_the_listed_file(self):
         github = FakeGitHub()
@@ -152,6 +152,18 @@ class FactsTests(unittest.TestCase):
         self.assertEqual(facts, Facts())
         facts, _ = cached(self.record, github, self.cache, self.fetch)
         self.assertEqual((facts.downloads, github.calls), (7, 1))
+
+    def test_an_answer_cached_with_one_release_of_downloads_is_asked_again(self):
+        github = FakeGitHub()
+        github.downloads = 5
+        github.earlier = [100]
+        entry = self.cache / "facts" / ("a" * 64 + ".json")
+        entry.parent.mkdir(parents=True)
+        entry.write_text(json.dumps({"size": 4096, "released": None, "prerelease": None, "content_version": None,
+                                     "param_path": None, "notes": None, "uploader": None, "downloads": 5,
+                                     "icon_url": DATA["icon_url"]}), encoding="utf-8")      # fresh, but one release
+        facts, _ = cached(self.record, github, self.cache, self.fetch)
+        self.assertEqual((facts.downloads, github.calls), (105, 1))
 
     def test_cached_by_sha256_and_pruned_when_delisted(self):
         github = FakeGitHub()
