@@ -48,7 +48,8 @@ then reviews and merges it.
 Your title ID is the app's permanent identity: the record's filename, the
 `titleId` in `sce_sys/param.json`, and the folder name on the console. It is
 four uppercase letters followed by five digits. `PPSA` is the usual prefix, but
-a custom one such as `FAKE77031` is accepted too, as long as it isn't `CUSA`
+a custom one such as `FAKE77031` is accepted too (an older store, such as ProsperoStore before
+1.000.110, does not show it), as long as it isn't `CUSA`
 (PS4 titles) or `NPXS` (system titles); ShadowMountPlus skips `NPXS`. Digits in
 the letters part (`F4K377031`) aren't accepted, because ShadowMountPlus ignores
 such folders.
