@@ -118,20 +118,30 @@ class FactsTests(unittest.TestCase):
     def test_lookup(self):
         self.assertEqual(lookup(self.record, FakeGitHub(), self.fetch), Facts(
             size=4096, released="2026-09-01T10:00:00Z", prerelease=True, content_version="01.000.020",
-            param_path="app/sce_sys/param.json", downloads_total=True))
+            param_path="app/sce_sys/param.json", downloads_total=True, downloads_zips=True))
 
-    def test_downloads_are_those_of_the_listed_file(self):
+    def test_downloads_count_the_zips_of_the_listed_release(self):
         github = FakeGitHub()
         github.downloads = 42
-        self.assertEqual(lookup(self.record, github, self.fetch).downloads, 42)
+        self.assertEqual(lookup(self.record, github, self.fetch).downloads, 141)      # 42 + 99 (other.zip)
         github.downloads = -1       # not a count
         self.assertIsNone(lookup(self.record, github, self.fetch).downloads)
 
-    def test_downloads_add_up_the_same_file_of_every_release(self):
+    def test_downloads_add_up_every_zip_of_every_release(self):
         github = FakeGitHub()
         github.downloads = 5        # the new release has just started counting
         github.earlier = [100, 30]
-        self.assertEqual(lookup(self.record, github, self.fetch).downloads, 135)     # other.zip is not counted
+        self.assertEqual(lookup(self.record, github, self.fetch).downloads, 234)     # 5 + 99 (other.zip) + 100 + 30
+
+    def test_downloads_add_up_zips_whose_name_changes_with_each_release(self):
+        github = FakeGitHub()
+        github.downloads = 320
+        releases = [{"tag_name": "v0.6.0", "assets": [{"name": "PPSA01234.zip", "download_count": 320}]},
+                    {"tag_name": "v0.5.0", "assets": [{"name": "PPSA01234-0.5.0.zip", "download_count": 812},
+                                                      {"name": "SHA256SUMS", "download_count": 50}]},
+                    {"tag_name": "v0.4.0", "assets": [{"name": "PPSA01234-0.4.0.ZIP", "download_count": 1429}]}]
+        github.all_releases = lambda owner, name, max_pages=10: releases
+        self.assertEqual(lookup(self.record, github, self.fetch).downloads, 2561)    # SHA256SUMS is not a ZIP
 
     def test_downloads_fall_back_to_the_listed_release_when_the_list_is_unavailable(self):
         github = FakeGitHub()
@@ -151,7 +161,7 @@ class FactsTests(unittest.TestCase):
         facts, _ = cached(self.record, None, self.cache)       # offline there is nobody to ask: nothing is claimed
         self.assertEqual(facts, Facts())
         facts, _ = cached(self.record, github, self.cache, self.fetch)
-        self.assertEqual((facts.downloads, github.calls), (7, 1))
+        self.assertEqual((facts.downloads, github.calls), (106, 1))   # 7 + 99 (other.zip)
 
     def test_an_answer_cached_with_one_release_of_downloads_is_asked_again(self):
         github = FakeGitHub()
@@ -163,7 +173,7 @@ class FactsTests(unittest.TestCase):
                                      "param_path": None, "notes": None, "uploader": None, "downloads": 5,
                                      "icon_url": DATA["icon_url"]}), encoding="utf-8")      # fresh, but one release
         facts, _ = cached(self.record, github, self.cache, self.fetch)
-        self.assertEqual((facts.downloads, github.calls), (105, 1))
+        self.assertEqual((facts.downloads, github.calls), (204, 1))   # 5 + 99 (other.zip) + 100
 
     def test_cached_by_sha256_and_pruned_when_delisted(self):
         github = FakeGitHub()

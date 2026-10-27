@@ -211,12 +211,13 @@ spells it (the website's developer page for it is `/dev/<owner, lowercase>/`), a
 how the developer credits themselves and can be written two ways. Compare owners
 ignoring case.
 
-`downloads` is how many times GitHub has served the listed release file, as of
-the build (the counts are read at most once a day), or `null` when it isn't known.
-It adds up the same-named file across every release of the repository, so a new
-version keeps the total of the earlier ones instead of starting at zero. It counts
-every download of that file, so reinstalls and downloads outside the store are in
-it: show it as "downloads", not as installs. When the list of releases can't be
+`downloads` is how many times GitHub has served the `.zip` files of the repository's
+releases, as of the build (the counts are read at most once a day), or `null` when it
+isn't known. It adds up every `.zip` asset of every release (not GitHub's automatic
+source-code archives, checksums or other files), so a new version keeps the total of
+the earlier ones instead of starting at zero, even when the file's name carries the
+version. It counts every download of those files, so reinstalls and downloads outside
+the store are in it: show it as "downloads", not as installs. When the list of releases can't be
 read, it falls back to the listed release's own count. It is only in the index: it
 changes every day, and an app's own file must not.
 

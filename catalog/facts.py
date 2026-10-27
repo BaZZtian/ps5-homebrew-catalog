@@ -52,6 +52,7 @@ class Facts:
     uploader: str | None = None            # who attached the file: "actions" (a workflow) or "developer"
     downloads: int | None = None           # times GitHub served the listed file (every download, not only the store's)
     downloads_total: bool = False          # downloads adds up every release of the file (older answers counted one)
+    downloads_zips: bool = False           # downloads adds up every .zip of every release (older answers matched one file name)
 
 
 def content_version_key(value: str | None) -> tuple[int, int, int] | None:
@@ -111,11 +112,13 @@ def find_content_version(record: Record, github: GitHub, fetch=None) -> tuple[st
 
 
 def total_downloads(record: Record, github: GitHub, current: int) -> int:
-    """Downloads of the listed file across every release of the repository, not only the listed one.
+    """Downloads of the app's ZIPs across every release of the repository, not only the listed one.
 
-    A new release attaches a new file whose counter starts at zero, so the total adds up the same-named
-    file of every release. `current` (the listed release's own count) is the floor: when the release list
-    can't be read or doesn't contain the listed release, nothing is lost."""
+    A new release attaches a new file whose counter starts at zero, and many apps put the version in the
+    file's name (Emby5-1.2.9.zip, Emby5-1.2.8.zip), so the total adds up every `.zip` asset of every
+    release. Assets are uploaded files only: GitHub's automatic source-code archives are not assets, and
+    checksums or other non-ZIP files are skipped. `current` (the listed release's own count) is the floor:
+    when the release list can't be read or doesn't contain the listed release, nothing is lost."""
     try:
         releases = github.all_releases(record.owner, record.repo)
     except GitHubError:
@@ -125,7 +128,10 @@ def total_downloads(record: Record, github: GitHub, current: int) -> int:
     for release in releases:
         for asset in release.get("assets", []):
             count = asset.get("download_count")
-            if asset.get("name") != record.asset_name or not isinstance(count, int) or count < 0:
+            name = asset.get("name")
+            if not isinstance(name, str) or not name.lower().endswith(".zip"):
+                continue
+            if not isinstance(count, int) or count < 0:
                 continue
             total += count
             seen_listed = seen_listed or release.get("tag_name") == record.tag
@@ -144,7 +150,7 @@ def lookup(record: Record, github: GitHub, fetch=None) -> Facts:
     count = count if isinstance(count, int) and count >= 0 else None
     if count is not None:
         count = total_downloads(record, github, count)
-    return Facts(size=asset.get("size"), downloads=count, downloads_total=True,
+    return Facts(size=asset.get("size"), downloads=count, downloads_total=True, downloads_zips=True,
                  released=release.get("published_at"),
                  prerelease=release.get("prerelease"), content_version=content_version, param_path=where,
                  notes=body[:MAX_NOTES] if isinstance(body, str) and body.strip() else None, uploader=uploader)
@@ -159,10 +165,10 @@ def cached(record: Record, github: GitHub | None, cache: Path | None, fetch=None
     if entry and entry.is_file():
         try:
             saved = json.loads(entry.read_text(encoding="utf-8"))
-            # An entry without "notes", "uploader", "downloads" or "downloads_total" was written before
-            # they were read (or before downloads were added up across releases).
+            # An entry without "notes", "uploader", "downloads", "downloads_total" or "downloads_zips" was
+            # written before they were read (or before downloads were added up across releases and ZIP names).
             if (saved.pop("icon_url", None) == record.icon_source
-                    and all(key in saved for key in ("notes", "uploader", "downloads", "downloads_total"))):
+                    and all(key in saved for key in ("notes", "uploader", "downloads", "downloads_total", "downloads_zips"))):
                 older = Facts(**saved)
                 if github is None or time.time() - entry.stat().st_mtime < FRESH_SECONDS:
                     return older, None

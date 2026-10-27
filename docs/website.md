@@ -109,10 +109,12 @@ dist/
   shown as plain text. Writing happens on GitHub, through the link on the page.
   When the files can't be read the page keeps only that link.
 - **Downloads** on an app's page and its developer's page are the `download_count` GitHub keeps for the
-  listed file, read at build time with the release facts (so at most a day old). It counts every
-  download of that file from GitHub, repeat installs and downloads outside the store included, so it is a
-  rough sign of popularity and not the number of consoles that have the app. Nothing is collected from
-  the store or from visitors. A new version starts at zero, because the count belongs to the file.
+  `.zip` files of the repository's releases, added up across every release (so a new version keeps the
+  total of the earlier ones, even when the file's name carries the version), read at build time with the
+  release facts (so at most a day old). It counts every download of those files from GitHub, repeat
+  installs and downloads outside the store included, so it is a rough sign of popularity and not the
+  number of consoles that have the app. GitHub's automatic source-code archives, checksums and other
+  non-ZIP files are not counted. Nothing is collected from the store or from visitors.
 - **Developer pages** (`/dev/<owner>/`, the owner of `source_repo`, lowercase) are public: there is no login.
   Each lists the owner's apps with version, update date, downloads, likes and comments (the last two read like
   the app page's) and an **Edit listing** button that opens `apps/<ID>.json` in GitHub's editor. An app's
