@@ -38,7 +38,7 @@ CONTENT_VERSION = re.compile(r"[0-9]{2}\.[0-9]{3}\.[0-9]{3}")
 MAX_PARAM_BYTES = 65536
 MAX_PARAM_FILES = 5     # param.json files tried when the repository has several (vendored samples)
 MAX_NOTES = 40000       # characters of release notes kept
-FRESH_SECONDS = 86400   # how long a cached answer is used before GitHub is asked again
+FRESH_SECONDS = 72000   # how long a cached answer is used before GitHub is asked again (20 h: a daily build always renews it)
 
 
 @dataclass(frozen=True)
