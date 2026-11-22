@@ -1,5 +1,11 @@
 # PS5 Homebrew Catalog
 
+## Start here
+
+Browse the public store to find native PS5 homebrew. Each listing points to its developer’s download and instructions.
+
+[Browse the store](https://prosperostore.net/)
+
 [![CI](https://github.com/darkxex/ps5-homebrew-catalog/actions/workflows/ci.yml/badge.svg)](https://github.com/darkxex/ps5-homebrew-catalog/actions/workflows/ci.yml)
 [![Catalog health](https://github.com/darkxex/ps5-homebrew-catalog/actions/workflows/health.yml/badge.svg)](https://github.com/darkxex/ps5-homebrew-catalog/actions/workflows/health.yml)
 
